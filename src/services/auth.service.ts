@@ -1,15 +1,16 @@
 import * as bcryptjs from 'bcryptjs';
 import db from '../lib/db';
+import jwt from "jsonwebtoken";
 import { generateOTP } from '../lib/utils/otp.util';
 import { sendVerificationEmail } from '../services/mail.service';
 
-//SIGNUP
-export const signUp = async (email: string, password: string, fullName: string) => {
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
-  //check if the user already exists
+// --- SIGNUP ---
+export const signUp = async (email: string, password: string, fullName: string) => {
   const existingUser = await db.user.findUnique({ where: { email } });
   if (existingUser) {
-    throw new Error("This email is already registered.");
+   return { success: false, message: "This email is already registered."};
   }
 
   // Security and OTP generation
@@ -19,13 +20,7 @@ export const signUp = async (email: string, password: string, fullName: string) 
 
   // Save user to database
   const result = await db.user.create({
-    data: {
-      email,
-      password: hashedPassword,
-      fullName,
-      otp,
-      otpExpires: expires,
-      isVerified: false
+    data: {email, password: hashedPassword, fullName, otp,otpExpires: expires,isVerified: false
     }
   });
 
@@ -33,10 +28,12 @@ export const signUp = async (email: string, password: string, fullName: string) 
 
   // Return non-sensitive data only
   return {
-    id: result.id,
-    email: result.email,
-    fullName: result.fullName,
-    createdAt: result.createdAt
+    success: true, 
+    message: "User created successfully!",
+
+    data:{id: result.id, email: result.email, fullName: result.fullName, createdAt: result.createdAt
+       }
+   
   };
 };
 
@@ -49,74 +46,81 @@ export const login = async (email: string , password: string) =>{
         where: { email }
     });
       if (!result) {
-        throw new Error("User not found");
+        return { success: false, message: "User not found" };
     } 
 
     const isPasswordValid = await bcryptjs.compare(password, result.password);
     if (!isPasswordValid) {
-        throw new Error("Invalid password");
+        return { success: false, message: "Invalid password" };
     }
+    //generate fresh OTP
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 5 * 60 * 1000);
   
+       await db.user.update({
+        where: { email },
+        data: { 
+            otp: newOtp, 
+            otpExpires: expires, 
+            isVerified: false // This "locks" the account again
+        }
+    });
+    //send email
+    await sendVerificationEmail(email, result.fullName, newOtp);
+
     //Return user info (success)
     return {
-        id: result.id,
-        email:result.email,
-        fullName:result.fullName,
-        isVerified: result.isVerified
+        success: true, 
+        message: "Verification code sent to email", 
+        requiresVerification: true,
+      data:{id: result.id, email:result.email, fullName:result.fullName, isVerified: result.isVerified
+      }
+       
     };
 };
 
-//ISVERIFIED
-
+//--- VERIFY OTP ---
 export const verifyOTP = async (email:string, otp:string)=>{
 
    const result = await db.user.findUnique({ where:{email}});
    
-   if(!result) throw new Error("user not found");
+   if(!result)return { success: false, message: "User not found" };
    
-   if(result.otp !== otp){
-    throw new Error("Invalid OTP");
+   if(result.otp !== otp){return { success: false, message: "Invalid OTP" };
    }
-   if(result.otpExpires && result.otpExpires < new Date()){
-    throw new Error("OTP expired");
+   if(result.otpExpires && result.otpExpires < new Date()){return { success: false, message: "OTP expired" };
    }
-  return await db.user.update({
+
+const updatedUser = await db.user.update({
     where: { email: email },
-    data: {
-      isVerified: true,
-      otp: null,
-      otpExpires: null
-    },
-    //bring only this specific data
-    select: {
-      id: true,
-      email: true,
-      fullName: true
-    }
+    data: { isVerified: true, otp: null,otpExpires: null },
+    select: {id: true, email: true, fullName: true}  // Security selection kept
   });
+
+  const token = jwt.sign({ id: updatedUser.id, email: updatedUser.email }, JWT_SECRET, { expiresIn: '1d' });
+return { success: true, message: "Account verified successfully", token, data: updatedUser };
 };
-//RESEND OTP
+
+//---RESEND OTP----
 
 export const sendOTP = async (email:string) => {
   const result = await db.user.findUnique({ where: { email } });
   if (!result) {
-    throw new Error("User not found");
+   return { success: false, message: "User not found" };
   }
   if (result.isVerified) {
-        throw new Error("ALREADY_VERIFIED");
+       return { success: false, message: "ALREADY_VERIFIED" };
     }
    const newOtp = generateOTP();
    const newExpires = new Date(Date.now() + 5 * 60 * 1000);
 
   await db.user.update({
         where: { email },
-        data: {
-            otp: newOtp,
-            otpExpires: newExpires
+        data: { otp: newOtp, otpExpires: newExpires
         }
     });
     await sendVerificationEmail(email, result.fullName, newOtp);
-    return { message: "New OTP sent successfully" };
+    return { success: true, message: "New OTP sent successfully" };
 }
 
 
