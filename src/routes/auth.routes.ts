@@ -1,14 +1,16 @@
 import { Router } from "express";
-import  {signUp , login, verifyOTP, sendOTP ,} from "../controllers/auth.controller"
+import * as controller from "../controllers/auth.controller"
+import { validate } from "../middlewares/validate.middleware";
+import { signupSchema, loginSchema, emailSchema, verifyOTPSchema } from "../validations/auth.validation";
 
 
 
 
 const authRouter = Router();
-authRouter.post("/signup", signUp)
-authRouter.post("/login", login);
-authRouter.post("/verify-otp", verifyOTP);
-authRouter.post("/send-otp", sendOTP);
-
+authRouter.post("/signup", validate(signupSchema), controller.signUp);
+authRouter.post("/login", validate(loginSchema),controller.login);
+authRouter.post("/send-otp", validate(emailSchema),controller.sendOTP);
+authRouter.post("/verify-otp", validate(verifyOTPSchema),controller.verifyOTP);
+authRouter.post("/logout", controller.logout);
 
 export default authRouter;

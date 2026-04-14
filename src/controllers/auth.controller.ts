@@ -1,94 +1,70 @@
 import { Request, Response } from "express";
 import * as AuthService from "../services/auth.service";
-import { AuthInterface } from "../interfaces/auth.interface";
-import jwt from "jsonwebtoken";
 
-//SIGNUP
+//---SIGNUP---
 export const signUp = async (req: Request, res: Response) => {
     try {
         const { email, password, fullName } = req.body;
         const result = await AuthService.signUp(email, password, fullName);
-        
-        res.status(201).json({ 
-            message: "User created successfully!", 
-            data: result 
-        });
-    } catch (error:any) {
-        console.error("DATABASE ERROR:", error);
-        res.status(400).json({ error: "SignUp failed." }); 
-    }
-};
+        // Status 201 for Created, 400 for errors (like user already exists)
+       res.status(result.success ? 201 : 400).json(result);
+      }catch (error) {
+        res.status(500).json({ success: false, message: "Internal server error" });
+      }
+      };
 
-//LOGIN: Check credentials and give a Token
+//---LOGIN---
 export const login = async(req:Request,res:Response) =>{
     try {
 
         const {email, password} = req.body;
         const result = await AuthService.login(email, password);
-        
-        const token = jwt.sign({ id: result.id }, "MY_SECRET_KEY", { expiresIn: '1d' });
-        
-            res.status(200).json({
-                message: "Login successful",
-                token:token,
-                data: result
-            });
-        
-        } catch (error: any) {
-         return res.status(401).json({ error: "Invalid email or password" });
-  }
+        // Status 200 for OK, 401 for Unauthorized
+        res.status(result.success ? 200 : 401).json(result);
+    }    catch (error) {
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
 };
+   
+         
 
-//VERIFY OTP
+//---VERIFY OTP---
 
 export const verifyOTP = async (req: Request, res: Response) => {
 
     try {
         const {email, otp} = req.body;
         const result = await AuthService.verifyOTP(email, otp);
-        
-        const token = jwt.sign({ id: result.id }, "MY_SECRET_KEY", { expiresIn: '1d' });
-        res.status(200).json({
-            message: "Account verified successfully",
-            token:token,
-            data: { ...result, isVerified: true }
-        });
+      
+       res.status(result.success ? 200 : 400).json(result);
+       }catch (error) {
+        res.status(500).json({ success: false, message: "Internal server error" });
+       }
+       };
        
-    } catch (error:any) {
-         if (error === "INVALID_OTP") {
-            return res.status(400).json({ error: "The code you entered is incorrect." });
-        }
-        if (error === "OTP_EXPIRED") {
-            return res.status(410).json({ error: "Code expired. Please request a new one." });
-        }
-    
-        res.status(500).json({ error: "Verification failed." });
-    }
-}
-//RESEND OTP
+//---SEND OTP---
 
 export const sendOTP = async (req: Request, res: Response) => {
-     
+    try {
+        const { email } = req.body;
+        const response = await AuthService.sendOTP(email);
+        res.status(response.success ? 200 : 400).json(response);
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+// ---LOGOUT---
+
+export const logout = async(req: Request, res: Response)=>{
     try{
-         //we need the email for a resend, so we can check if the user exists and is not already verified
-    const { email } = req.body;
-
-    if (!email) {
-            return res.status(400).json({ error: "Email is required to resend the code." });
-        }
-    await AuthService.sendOTP(email);
-        res.status(200).json({ 
-            message: "A  verification code has been sent to your email." 
-        });
-     } catch (error:any) {
-          if (error.message === "User not found") {
-            return res.status(404).json({ error: "No account found with this email." });
-        }
-        if (error.message === "ALREADY_VERIFIED") {
-            return res.status(400).json({ error: "This account is already verified." });
-        }
-        res.status(500).json({ error: "Server error. Please try again later." });
-
-        }
-}
-
+    return res.status(200).json({ 
+      success: true, 
+      message: "Logged out successfully" 
+    });
+  } catch (error) {
+    return res.status(500).json({ 
+      success: false, 
+      message: "Error during logout" 
+    });
+}};
