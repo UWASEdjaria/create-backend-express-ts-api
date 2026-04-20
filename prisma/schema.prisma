@@ -17,4 +17,22 @@ model User {
   createdAt  DateTime  @default(now())
   fullName   String
   otpExpires DateTime?
+  tasks      Task[] //this allow user to have many tasks
 }
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  priority    String   @default("medium")
+  status      String   @default("todo")
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  
+  // This links the task to a User's ID
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
