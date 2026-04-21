@@ -4,6 +4,7 @@ export const signupSchema = z.object({
     email: z.string().email("Invalid email format"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     fullName: z.string().min(3, "Full name is required"),
+    url: z.string().url("Invalid URL format").optional(),
   });
 
 export const loginSchema = z.object({

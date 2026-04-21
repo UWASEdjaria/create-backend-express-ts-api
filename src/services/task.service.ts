@@ -1,42 +1,60 @@
-import { PrismaClient } from "@prisma/client";
-import { TaskInterface } from "../interfaces/task.interface";
+
+import { TaskInterface , ITaskCreate } from "../interfaces/task.interface";
 import { db } from "../lib/db";
+import {TaskPriority ,TaskStatus} from "../interfaces/enums"
 
-const prisma = new PrismaClient();
-export const createTask = async (
-  userId: string,
-  taskData: { title: string; description?: string; priority: 'low' | 'medium' | 'high' ; status?: string}
-): Promise<TaskInterface> => {
-  console.log("SERVICE RECEIVED DATA:", { userId, taskData });
-  try {
-    if (!userId) {
-      throw new Error("UserID is missing in Service");
+class TaskService{
+  static async createTasks(userId : string, taskData :ITaskCreate): Promise<TaskInterface> {
+    try {
+      if(!userId){
+        throw new Error("UserID is missing in Service");
+      }
+      const newTask = await db.task.create({
+         data :{
+           title: taskData.title,
+           description: taskData.description,
+           priority: taskData.priority,
+           status: taskData.status ?? TaskStatus.TODO,
+           dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
+           duration: taskData.duration ? Number(taskData.duration) : null,
+           userId: userId,
+         }
+      });
+      return newTask as TaskInterface
+      
+    } catch (error) {
+      console.error("[TaskService.createTask] Database Error", error)
+      throw error ;
     }
+  }
 
-    const newTask = await prisma.task.create({
-      data: {
-        title: taskData.title,
-        description: taskData.description,
-        priority: taskData.priority,
+
+static async getUserTasks(userId: string):Promise<TaskInterface[]>{
+  try {
+    const tasks = await db.task.findMany({
+      where :{userId: userId,},
+      orderBy: {createdAt: 'desc',},
+    })
+    return tasks as TaskInterface[];
+    
+  } catch (error) {
+    console.error("[TaskService.getUserTasks] Database Error:", error);
+    throw error;
+  }
+}
+static async getTaskById(userId: string, taskId: string): Promise<TaskInterface | null> {
+  try {
+    const task = await db.task.findFirst({
+      where: {
+        id: taskId,
         userId: userId,
-       status: taskData.status || "todo",
       },
     });
-
-    return newTask as unknown as TaskInterface;
+    return task as TaskInterface; 
   } catch (error) {
-
-    console.error("DATABASE CRASH ERROR:", error);
-    throw error; 
+    console.error("Error finding task:", error);
+    throw error;
   }
+}
 };
-export const getUserTasks = async (userId: string) => {
-  return await db.task.findMany({
-    where: {
-      userId: userId,
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-};
+export default TaskService;
