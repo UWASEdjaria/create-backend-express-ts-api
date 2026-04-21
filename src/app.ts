@@ -1,14 +1,27 @@
-import express from 'express';
+import express, { Application } from 'express';
 import cors from 'cors';
 import rootRouter from './routes/index';
 
+class App {
+  public app: Application;
 
-const app = express();
-app.use(express.json());
-app.use(cors({
-    origin:process.env.FRONTEND_URL || 'http://localhost:3000', // Allow  frontend
-    credentials: true
-}));
-app.use("/api", rootRouter);
+  constructor() {
+    this.app = express();
+    this.config();
+    this.routes();
+  }
 
-export default app;
+  private config(): void {
+    this.app.use(express.json());
+    this.app.use(cors({
+      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+      credentials: true
+    }));
+  }
+
+  private routes(): void {
+    this.app.use("/api", rootRouter);
+  }
+}
+
+export default new App().app;

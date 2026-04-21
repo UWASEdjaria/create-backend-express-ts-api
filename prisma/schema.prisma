@@ -7,6 +7,10 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+enum Role {
+  USER
+  ADMIN
+}
 
 model User {
   id         String    @id @default(cuid())
@@ -16,6 +20,7 @@ model User {
   isVerified Boolean   @default(false)
   createdAt  DateTime  @default(now())
   fullName   String
+  role        Role     @default(USER)
   otpExpires DateTime?
   tasks      Task[] //this allow user to have many tasks
 }
@@ -29,6 +34,7 @@ model Task {
   dueDate     DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  duration    Int?
 
   
   // This links the task to a User's ID
