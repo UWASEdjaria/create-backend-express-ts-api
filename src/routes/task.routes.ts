@@ -1,5 +1,5 @@
 import { Router } from "express";
-import * as controller from "../controllers/task.controller";
+import  TaskController from "../controllers/task.controller";
 import { validate } from "../middlewares/validate.middleware";
 import { createTaskSchema } from "../validations/task.validation";
 import { authMiddleware } from "../middlewares/auth.middleware"; // Now this will work!
@@ -7,7 +7,8 @@ import { authMiddleware } from "../middlewares/auth.middleware"; // Now this wil
 const router = Router();
 
 // Apply authMiddleware to both routes
-router.get("/", authMiddleware, controller.handleGetTasks);
-router.post("/", authMiddleware, validate(createTaskSchema), controller.handleCreateTasks);
+router.get("/", authMiddleware, TaskController.handleGetTasks);
+
+router.post("/", authMiddleware, validate(createTaskSchema), TaskController.handleCreateTasks);
 
 export default router;
