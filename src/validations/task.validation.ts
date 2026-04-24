@@ -1,5 +1,5 @@
 import { z } from "zod";
-
+import { TaskPriority, TaskStatus } from "../interfaces/enums";
 export const createTaskSchema = z.object({
   title: z
     .string()
@@ -10,13 +10,18 @@ export const createTaskSchema = z.object({
     .max(500, "Description cannot exceed 500 characters")
     .optional(),
   priority: z
-    .enum(["low", "medium", "high"], {
+   .nativeEnum(TaskPriority, {
       errorMap: () => ({ message: "Please select a valid priority level" }),
-    })
-    .default("medium"),
+    }),
+    dueDate: z
+    .string()
+    .optional()
+    .transform((val) => (val ? new Date(val) : undefined)),
+    
+
   status: z
-    .enum(["todo", "in-progress", "completed"])
-    .default("todo"),
+    .nativeEnum(TaskStatus)
+    .optional(),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
