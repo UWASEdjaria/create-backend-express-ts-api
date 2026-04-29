@@ -1,7 +1,7 @@
-import { Response, NextFunction } from "express";
+import { Request ,Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
-export const authMiddleware = (req: any, res: Response, next: NextFunction) => {
+export const authMiddleware = (req:Request, res: Response, next: NextFunction) => {
   try {
     // 1. Get token from header
     const authHeader = req.headers.authorization;
@@ -20,7 +20,7 @@ export const authMiddleware = (req: any, res: Response, next: NextFunction) => {
 
     // 3. Attach user to request
 
-    req.user = { id: decoded.id }; 
+    req.user = { id: decoded.id ,email: decoded.email , role: decoded.role}; 
 
     next();
   } catch (error) {
